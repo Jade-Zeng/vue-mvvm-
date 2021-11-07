@@ -15,11 +15,25 @@ const compileUtil = {
             return data[currentVal]
         }, vm.$data)
     },
+    setVal (expr, vm, inputVal) {
+        return expr.split('.').reduce((data, currentVal) => {
+            data[currentVal] = inputVal
+        }, vm.$data)
+    },
+    getContentVal (expr, vm) {
+       return expr.replace(/\{\{(.+?)\}\}/g, (...args) => {
+           return this.getVal(args[1], vm)
+       })
+    },
     text (node, expr, vm) { // expr: msg value: data中的value {{}}中的文本
         // const value = this.getVal(expr, vm)
         let value
-        if (expr.indexOf('{{') !== -1) {
+        if (expr.indexOf('{{') !== -1) { //  {{person.name}}-{{person.age}}
             value = expr.replace(/\{\{(.+?)\}\}/g, (...args) => {
+                // 绑定观察者，将来数据发生变化 触发这里的毁掉 进行更新
+                new Watcher(vm, args[1], () => {
+                    this.updater.textUpdater(node, this.getContentVal(expr, vm))
+                })
                 return this.getVal(args[1], vm)
             })
         } else {
@@ -29,10 +43,21 @@ const compileUtil = {
     },
     html (node, expr, vm) {
         const value = this.getVal(expr, vm)
+        new Watcher(vm, expr, (newVal) => {
+            this.updater.htmlUpdater(node, newVal)
+        })
         this.updater.htmlUpdater(node, value)
     },
     model (node, expr, vm) {
         const value = this.getVal(expr, vm)
+        // 绑定更新函数 数据=> 视图
+        new Watcher(vm, expr, (newVal) => {
+            this.updater.modelUpdater(node, newVal)
+        })
+        // 视图=> 数据
+        node.addEventListener('input', (e) => {
+            this.setVal(expr, vm, e.target.value)
+        })
         this.updater.modelUpdater(node, value)
     },
     on (node, expr, vm, eventName) {
@@ -118,7 +143,7 @@ class Compile {
                 node.removeAttribute('v-' + directive)
             } else if (this.isEventName(name)) {
                 const [, eventName] = name.split('@') // @click=
-                console.log(eventName)
+                // console.log(eventName)
                 compileUtil['on'](node, value, this.vm, eventName)
             }
 
@@ -147,8 +172,22 @@ class MVue {
         this.$options = options
         if (this.$el) {
             //1.实现数据观察者
+            new Observer(this.$data)
             // 2.指令解析器
             new Compile(this.$el, this)
+            this.proxyData(this.$data)
+        }
+    }
+    proxyData (data) {
+        for ( const key in data) {
+            Object.defineProperty(this, key, {
+                get () {
+                   return data[key]
+                },
+                set (newVal) {
+                    data[key] = newVal
+                }
+            })
         }
     }
 }

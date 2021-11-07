@@ -16,12 +16,14 @@
         <div v-text="msg"></div>
         <div v-text="person.name"></div>
         <div v-html="htmlStr"></div>
+        <div>输入框内容==={{msg2}}</div>
         <input type="text" v-model="msg2">
         <img v-bind:src="src"></img>
         <button v-on:click="clickButton">我是一个按钮</button>
         <button @click="clickButton">我是一个@@@</button>
     </div>
 <!--    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>-->
+    <script src="./Observer.js"></script>
     <script src="./MVue.js"></script>
     <script>
         let vm =  new MVue({
@@ -38,7 +40,9 @@
             },
             methods: {
                 clickButton () {
-                    console.log(this)
+                    // console.log(this)
+                    this.person.name = '我的朋友小蓝'
+                    // this.$data.person.name = '标题修改为===='
                 }
             }
         })
